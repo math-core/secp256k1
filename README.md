@@ -33,14 +33,40 @@ The codebase is engineered as a clean, dependency-free monolithic framework:
 
 ---
 
-## ⚙️ COMPILATION & TESTING
+## ⚙️ COMPILATION & HARDWARE TARGETING
 
-To build and compile this hardware-aligned engine, utilize the standard Nvidia CUDA Toolkit compiler (`nvcc`) under Linux:
+Since this engine bypasses virtual abstraction layers, it must be compiled with strict alignment to your physical GPU architecture. Compiling with an incorrect Compute Capability (`sm_XX`) will break the inline PTX assembly pipeline or trigger fallback JIT compilation.
+
+### 1. Identify Your Hardware Target
+
+| NVIDIA GPU Generation | Architecture Microname | Compute Capability Flag |
+| :--- | :--- | :--- |
+| **Blackwell (Consumer)** (RTX 50xx Series) | `Blackwell` | **`-arch=sm_120`** |
+| **Blackwell (Data Center)** (GB200) | `Blackwell` | `-arch=sm_100` / `-arch=sm_101` |
+| **Hopper** (H100, H200) | `Hopper` | `-arch=sm_90` |
+| **Ada Lovelace** (RTX 40xx) | `Ada` | `-arch=sm_89` |
+| **Ampere** (RTX 30xx, A100) | `Ampere` | `-arch=sm_80` / `-arch=sm_86` |
+
+> ⚠️ **Note for cutting-edge deployments:** Modern consumer Blackwell chips (including mobile and desktop RTX 50-series) utilize **Compute Capability 12.0**. Compiling specifically with `-arch=sm_120` unlocks specialized hardware paths natively.
+
+### 2. Production Build Pipeline
+
+To compile the core with aggressive loop unrolling, maximum register allocation, and advanced C++20/C++26 metaprogramming under CUDA 12.8+, execute the following build command:
 
 ```bash
-# Compile with heavy optimizations targeting your specific GPU architecture
-nvcc -O3 -std=c++17 -arch=sm_80 secp256k1_core.cu -o secp256k1_bench
-```
+nvcc -O3 -std=c++20 \
+  -arch=sm_120 \
+  --use_fast_math \
+  -Xptxas -v \
+  -Xptxas --maxrregcount=64 \
+  secp256k1_core.cu -o secp256k1_bench
+  ### 3. Deconstructing the Compiler Flags:
+
+* **`-O3`**: Enables maximum host and device code optimization layers.
+* **`-std=c++20`**: Unlocks modern syntax and concepts required for clean CUDA/C++ integration.
+* **`--use_fast_math`**: Forces the compiler to use high-throughput hardware intrinsics for algebraic approximations, reducing raw instruction cycles.
+* **`-Xptxas -v`**: Forces the PTX assembler to print verbose resource usage per thread (registers count and memory memory spills).
+* **`-Xptxas --maxrregcount=64`**: Sets a hard ceiling on register allocation per thread to maximize warp occupancy and prevent context-switching bottlenecks.
 
 ---
 
