@@ -60,6 +60,8 @@ nvcc -O3 -std=c++20 \
   -Xptxas -v \
   -Xptxas --maxrregcount=64 \
   secp256k1_core.cu -o secp256k1_bench
+  
+```
   ### 3. Deconstructing the Compiler Flags:
 
 * **`-O3`**: Enables maximum host and device code optimization layers.
